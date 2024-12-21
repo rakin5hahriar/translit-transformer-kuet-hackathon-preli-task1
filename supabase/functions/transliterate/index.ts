@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -19,6 +20,8 @@ serve(async (req) => {
     if (!text) {
       throw new Error('No text provided');
     }
+
+    console.log('Received text for transliteration:', text);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -42,17 +45,42 @@ serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
-    const bengaliText = data.choices[0].message.content;
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('OpenAI API error:', error);
+      throw new Error('Failed to get response from OpenAI');
+    }
 
-    return new Response(JSON.stringify({ bengaliText }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const data = await response.json();
+    console.log('OpenAI API response:', data);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response format from OpenAI');
+    }
+
+    const bengaliText = data.choices[0].message.content.trim();
+
+    return new Response(
+      JSON.stringify({ bengaliText }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
+
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Error in transliterate function:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
   }
 });
