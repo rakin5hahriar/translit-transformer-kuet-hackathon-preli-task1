@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Copy } from "lucide-react";
 import TransliterationPanel from "@/components/TransliterationPanel";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [inputText, setInputText] = useState("");
@@ -21,10 +22,15 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOutputText("বাংলা টেক্সট আউটপুট");
+      const { data, error } = await supabase.functions.invoke('transliterate', {
+        body: { text: inputText }
+      });
+
+      if (error) throw error;
+      
+      setOutputText(data.bengaliText);
     } catch (error) {
+      console.error('Transliteration error:', error);
       toast({
         title: "Error",
         description: "Failed to transliterate text. Please try again.",
